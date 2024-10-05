@@ -16,8 +16,8 @@ from pathlib import Path
 import streamlit_authenticator as stauth
 import sys
 
-__import__('pysqlite3')
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 
 load_dotenv()
@@ -91,14 +91,14 @@ if authentication_status:
         use_google = st.checkbox("Google Search")  # Moved to sidebar
         col1, col2 = st.columns(2)
         with col1:
-            paste_result = paste_image_button(
+            st.session_state.paste_result = paste_image_button(
                 label="Paste Image from Clipboard",
                 background_color="#FF0000",
                 hover_background_color="#380909",
                 errors='raise')
         with col2:
             if st.button("Clear Images"):
-                paste_result.image_data = None
+                st.session_state.paste_result.image_data = None
                 st.session_state.uploaded_images = {}  # Clear uploaded images as well
                 st.success("Images cleared!")
 
@@ -111,6 +111,8 @@ if authentication_status:
         st.session_state.uploaded_images = {}
     if "lang_chat_messages" not in st.session_state:
         st.session_state.lang_chat_messages = []
+    if "paste_result" not in st.session_state:
+        st.session_state.paste_result = None
     # Function to convert image to base64
     def image_to_base64(image: Image.Image) -> str:
         buffered = BytesIO()
@@ -168,10 +170,10 @@ if authentication_status:
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[uploaded_file.name] = image_message
 
-    if paste_result.image_data is not None:
+    if st.session_state.paste_result.image_data is not None:
         try:
-            # Since paste_result.image_data is already a PIL image, use it directly
-            img = paste_result.image_data
+            # Since st.session_state.paste_result.image_data is already a PIL image, use it directly
+            img = st.session_state.paste_result.image_data
             img_base64 = image_to_base64(img)  # Convert to base64 string for display
             image_message = {
                 "role": "user",
@@ -185,7 +187,7 @@ if authentication_status:
             
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[img_base64[:100]] = image_message
-            paste_result.image_data = None
+            
         except Exception as e:
             st.error(f"Error processing image: {str(e)}")
 
@@ -197,6 +199,8 @@ if authentication_status:
                 
     # Display chat messages
     for message in st.session_state.messages:
+        if not isinstance(message["content"], list) and message["content"] == "Here is an image.":
+            continue
         with st.chat_message(message["role"]):
             if isinstance(message["content"], list):
                 for item in message["content"]:
@@ -208,15 +212,17 @@ if authentication_status:
                 st.markdown(message["content"])
 
     # Handle user input
-    if prompt := st.chat_input("Ask anything..."):
-        # Add text to messages from user
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
+    if prompt := st.chat_input("Ask anything...") or st.session_state.paste_result.image_data is not None:
         # Append uploaded images to messages list
-        for image_message in st.session_state.uploaded_images.values():
-            st.session_state.messages.append(image_message)
+        with st.chat_message("user"):
+            for image_message in st.session_state.uploaded_images.values():
+                st.session_state.messages.append(image_message)
+                st.image(image_message["content"][0]["image_url"]["url"], width=200)
+            if prompt == True:
+                st.session_state.messages.append({"role": "user", "content": "Here is an image."})
+            else:
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                st.markdown(prompt)
 
         st.session_state.uploaded_images = {}  # Clear uploaded images list
 
@@ -270,6 +276,7 @@ if authentication_status:
                     st.write(response)
                 else:
                     spinner_placeholder.text("Generating response using normal method...")
+                    print(st.session_state.messages)    
                     stream = client.chat.completions.create(
                         model=st.session_state["openai_model"],
                         messages=[{"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages],
@@ -282,6 +289,6 @@ if authentication_status:
 
                 # Clear the placeholder after generating the response
                 spinner_placeholder.empty()
-
+                st.session_state.paste_result.image_data = None
             except Exception as e:
                 st.error(f"Error: {str(e)}")
