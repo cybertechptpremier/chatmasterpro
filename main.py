@@ -16,8 +16,8 @@ from pathlib import Path
 import streamlit_authenticator as stauth
 import sys
 
-__import__('pysqlite3')
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 
 load_dotenv()
@@ -91,16 +91,23 @@ if authentication_status:
         use_google = st.checkbox("Google Search")  # Moved to sidebar
         col1, col2 = st.columns(2)
         with col1:
-            st.session_state.paste_result = paste_image_button(
+            paste_result = paste_image_button(
                 label="Paste Image from Clipboard",
                 background_color="#FF0000",
                 hover_background_color="#380909",
                 errors='raise')
         with col2:
-            if st.button("Clear Images"):
-                st.session_state.paste_result.image_data = None
-                st.session_state.uploaded_images = {}  # Clear uploaded images as well
-                st.success("Images cleared!")
+            if st.button("Clear Image"):
+                # Check if buffer image is the same as the current image
+                if st.session_state.buffer_image != st.session_state.current_image:
+                    st.session_state.buffer_image = st.session_state.current_image
+                    st.session_state.current_image = None
+                    st.session_state.uploaded_images = {}  # Clear uploaded images as well
+                    st.success("Images cleared!")   
+            # if st.button("Clear Images"):
+            #     paste_result.image_data = None
+            #     st.session_state.uploaded_images = {}  # Clear uploaded images as well
+            #     st.success("Images cleared!")
 
 
     # Initialize session state variables
@@ -111,8 +118,12 @@ if authentication_status:
         st.session_state.uploaded_images = {}
     if "lang_chat_messages" not in st.session_state:
         st.session_state.lang_chat_messages = []
-    if "paste_result" not in st.session_state:
-        st.session_state.paste_result = None
+    if 'buffer_image' not in st.session_state:
+        st.session_state.buffer_image = None
+
+    if 'current_image' not in st.session_state:
+        st.session_state.current_image = None
+    
     # Function to convert image to base64
     def image_to_base64(image: Image.Image) -> str:
         buffered = BytesIO()
@@ -170,10 +181,40 @@ if authentication_status:
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[uploaded_file.name] = image_message
 
-    if st.session_state.paste_result.image_data is not None:
+    # if paste_result.image_data is not None:
+    #     try:
+    #         # Since paste_result.image_data is already a PIL image, use it directly
+    #         img = paste_result.image_data
+    #         img_base64 = image_to_base64(img)  # Convert to base64 string for display
+    #         image_message = {
+    #             "role": "user",
+    #             "content": [
+    #                 {
+    #                     "type": "image_url",
+    #                     "image_url": {"url": img_base64},
+    #                 },
+    #             ]
+    #         }
+            
+    #         # Add image to message list but don't submit yet
+    #         st.session_state.uploaded_images[img_base64[:100]] = image_message
+    #         paste_result.image_data = None
+            
+    #     except Exception as e:
+    #         st.error(f"Error processing image: {str(e)}")
+    if paste_result.image_data is not None:
+        # Store the new image in session state
+        st.session_state.current_image = paste_result.image_data
+
+    if st.session_state.uploaded_images != {}:
+        with st.spinner("Uploading images..."):
+            with st.sidebar:
+                for image_name, image_message in st.session_state.uploaded_images.items():
+                    st.image(image_message["content"][0]["image_url"]["url"])
+    if st.session_state.current_image and st.session_state.current_image != st.session_state.buffer_image:
         try:
-            # Since st.session_state.paste_result.image_data is already a PIL image, use it directly
-            img = st.session_state.paste_result.image_data
+            # Since paste_result.image_data is already a PIL image, use it directly
+            img = st.session_state.current_image
             img_base64 = image_to_base64(img)  # Convert to base64 string for display
             image_message = {
                 "role": "user",
@@ -191,12 +232,6 @@ if authentication_status:
         except Exception as e:
             st.error(f"Error processing image: {str(e)}")
 
-    if st.session_state.uploaded_images != {}:
-        with st.spinner("Uploading images..."):
-            with st.sidebar:
-                for image_name, image_message in st.session_state.uploaded_images.items():
-                    st.image(image_message["content"][0]["image_url"]["url"])
-                
     # Display chat messages
     for message in st.session_state.messages:
         if not isinstance(message["content"], list) and message["content"] == "Here is an image.":
@@ -212,7 +247,7 @@ if authentication_status:
                 st.markdown(message["content"])
 
     # Handle user input
-    if prompt := st.chat_input("Ask anything...") or st.session_state.paste_result.image_data is not None:
+    if prompt := st.chat_input("Ask anything..."):
         # Append uploaded images to messages list
         with st.chat_message("user"):
             for image_message in st.session_state.uploaded_images.values():
@@ -224,7 +259,11 @@ if authentication_status:
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 st.markdown(prompt)
 
-        st.session_state.uploaded_images = {}  # Clear uploaded images list
+        if st.session_state.buffer_image != st.session_state.current_image:
+            st.session_state.buffer_image = st.session_state.current_image
+            st.session_state.current_image = None
+            st.session_state.uploaded_images = {}  # Clear uploaded images as well
+            st.success("Images cleared!")   
 
         # Process messages for token limits before sending to the model
         st.session_state.messages = process_messages(
@@ -289,6 +328,6 @@ if authentication_status:
 
                 # Clear the placeholder after generating the response
                 spinner_placeholder.empty()
-                st.session_state.paste_result.image_data = None
+                paste_result.image_data = None
             except Exception as e:
                 st.error(f"Error: {str(e)}")
