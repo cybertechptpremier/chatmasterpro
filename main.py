@@ -67,7 +67,7 @@ if authentication_status:
         authenticator.logout("↩", "main")
         selected_model = st.selectbox(
             "Choose a Model",
-            options=["gpt-4o", "gpt-3.5-turbo"],
+            options=["gpt-4o-2024-08-06", "gpt-4o-mini", "gpt-3.5-turbo"],
             index=0,
         )
         st.session_state["openai_model"] = selected_model

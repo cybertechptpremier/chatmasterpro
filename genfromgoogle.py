@@ -27,12 +27,12 @@ def getGoogleAgent(model="gpt-3.5-turbo", chat_history=''):
 
     tools = [search_tool, datetimetool]
 
-    TEMPLATE = """Answer the following questions as best you can, You have access to the following tool:
+    TEMPLATE = """Answer the following questions as best you can, You have access to the following tool: WHEN YOU ARE READY TO ANSWER ALWAYS PUT `Final Answer: ` before the answer
     {tools}
     Always use the following format:
     Chat History: {chat_history}
     Question: the input question you must answer
-    Thought: you should always think if you need to search the web to answer this question.
+    Thought: you should always THINK if you need to search the web to answer this question.
     Action: if you know the answer and you don't think it's necessary to search the web, you can directly answer the question (skip to Final Answer).
     Otherwise, if web search is necessary, you can use this tool to search the web [{tool_names}].
     Action Input: the input to the action (i.e., the search query you will use).
