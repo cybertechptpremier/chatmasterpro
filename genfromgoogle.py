@@ -27,7 +27,7 @@ def getGoogleAgent(model="gpt-3.5-turbo", chat_history=''):
 
     tools = [search_tool, datetimetool]
 
-    TEMPLATE = """Answer the following questions as best you can, You have access to the following tool: WHEN YOU ARE READY TO ANSWER ALWAYS PUT `Final Answer: ` before the answer
+    TEMPLATE = """Answer the following questions as best you can, You have access to the following tool: WHEN YOU ARE READY TO ANSWER ALWAYS PUT `Final Answer: ` BEFORE YOUR ANSWER 
     {tools}
     Always use the following format:
     Chat History: {chat_history}

@@ -16,8 +16,8 @@ from pathlib import Path
 import streamlit_authenticator as stauth
 import sys
 
-# __import__('pysqlite3')
-# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+__import__('pysqlite3')
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 
 load_dotenv()
@@ -104,10 +104,6 @@ if authentication_status:
                     st.session_state.current_image = None
                     st.session_state.uploaded_images = {}  # Clear uploaded images as well
                     st.success("Images cleared!")   
-            # if st.button("Clear Images"):
-            #     paste_result.image_data = None
-            #     st.session_state.uploaded_images = {}  # Clear uploaded images as well
-            #     st.success("Images cleared!")
 
 
     # Initialize session state variables
@@ -181,27 +177,6 @@ if authentication_status:
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[uploaded_file.name] = image_message
 
-    # if paste_result.image_data is not None:
-    #     try:
-    #         # Since paste_result.image_data is already a PIL image, use it directly
-    #         img = paste_result.image_data
-    #         img_base64 = image_to_base64(img)  # Convert to base64 string for display
-    #         image_message = {
-    #             "role": "user",
-    #             "content": [
-    #                 {
-    #                     "type": "image_url",
-    #                     "image_url": {"url": img_base64},
-    #                 },
-    #             ]
-    #         }
-            
-    #         # Add image to message list but don't submit yet
-    #         st.session_state.uploaded_images[img_base64[:100]] = image_message
-    #         paste_result.image_data = None
-            
-    #     except Exception as e:
-    #         st.error(f"Error processing image: {str(e)}")
     if paste_result.image_data is not None:
         # Store the new image in session state
         st.session_state.current_image = paste_result.image_data
@@ -263,7 +238,6 @@ if authentication_status:
             st.session_state.buffer_image = st.session_state.current_image
             st.session_state.current_image = None
             st.session_state.uploaded_images = {}  # Clear uploaded images as well
-            st.success("Images cleared!")   
 
         # Process messages for token limits before sending to the model
         st.session_state.messages = process_messages(
@@ -300,9 +274,10 @@ if authentication_status:
                     chat_history = []
                     messages = st.session_state.messages
                     for i in range(0, len(messages) - 1, 2):  # Loop in steps of 2 to pair (quest, resp)
-                        user_message = messages[i]['content']
-                        assistant_response = messages[i + 1]['content']
-                        chat_history.append(f"User: {user_message}\nAssistant: {assistant_response}")
+                        if not isinstance(messages[i]['content'], list):
+                            user_message = messages[i]['content']
+                            assistant_response = messages[i + 1]['content']
+                            chat_history.append(f"User: {user_message}\nAssistant: {assistant_response}")
                     
                     # Join the tuples into a single string
                     formatted_chat_history = "\n".join(chat_history)
