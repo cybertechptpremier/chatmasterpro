@@ -29,7 +29,7 @@ just reformulate it if needed and otherwise return it as is."""
 
 
 def generateFromEmbeddings(query_text="", model="gpt-3.5-turbo", chat_history=[]) -> tuple[str, list[str]]:
-    print(chat_history)
+    # print(chat_history)
     contextualize_q_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", Q_SYSTEM),

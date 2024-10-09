@@ -33,7 +33,9 @@ file_path = Path(__file__).parent / "hashed_pw.pkl"
 with file_path.open("rb") as file:
     hashed_passwords = pickle.load(file)
 
-authenticator = stauth.Authenticate(names, usernames, hashed_passwords, "ptpremier", "ptpremier", cookie_expiry_days=30)
+authenticator = stauth.Authenticate(
+    names, usernames, hashed_passwords, "ptpremier", "ptpremier", cookie_expiry_days=30
+)
 
 name, authentication_status, username = authenticator.login("Login", "main")
 
@@ -45,8 +47,9 @@ if authentication_status:
     st.info(f"Welcome *{name}*")
     # App branding and title
     st.title("Welcome to ChatMaster Pro")
-    with st.expander('Instructions'):
-        st.markdown("""
+    with st.expander("Instructions"):
+        st.markdown(
+            """
     ### ChatMaster Pro: Your AI Chat Companion
 
     **ChatMaster Pro** is a powerful AI-powered chat application that allows you to engage in natural and informative conversations with advanced language models. 
@@ -59,7 +62,8 @@ if authentication_status:
     4. **Clear History:** Use the "Clear Chat History" button to start a fresh conversation.
 
     **Enjoy a seamless and engaging chat experience with ChatMaster Pro!**
-    """)
+    """
+        )
 
     # Sidebar for model selection and clear chat history button
     with st.sidebar:
@@ -78,11 +82,12 @@ if authentication_status:
             st.session_state.lang_chat_messages = []
             st.session_state.uploaded_images = {}  # Clear uploaded images as well
             st.success("Chat history cleared!")
-        
+
         # Image upload widget
         uploaded_files = st.file_uploader(
-            "Upload Images", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-        
+            "Upload Images", type=["png", "jpg", "jpeg"], accept_multiple_files=True
+        )
+
         # Move the Generate using documents to the most bottom
         st.markdown("---")
 
@@ -95,16 +100,20 @@ if authentication_status:
                 label="Paste Image from Clipboard",
                 background_color="#FF0000",
                 hover_background_color="#380909",
-                errors='raise')
+                errors="raise",
+            )
         with col2:
-            if st.button("Clear Image"):
+            if st.button("Clear Images"):
                 # Check if buffer image is the same as the current image
                 if st.session_state.buffer_image != st.session_state.current_image:
                     st.session_state.buffer_image = st.session_state.current_image
                     st.session_state.current_image = None
-                    st.session_state.uploaded_images = {}  # Clear uploaded images as well
-                    st.success("Images cleared!")   
-
+                    st.session_state.uploaded_images = (
+                        {}
+                    )  # Clear uploaded images as well
+                    st.success("Images cleared!")
+            if st.button("Reset Image History"):
+                st.session_state.buffer_image = None
 
     # Initialize session state variables
     if "messages" not in st.session_state:
@@ -114,12 +123,12 @@ if authentication_status:
         st.session_state.uploaded_images = {}
     if "lang_chat_messages" not in st.session_state:
         st.session_state.lang_chat_messages = []
-    if 'buffer_image' not in st.session_state:
+    if "buffer_image" not in st.session_state:
         st.session_state.buffer_image = None
 
-    if 'current_image' not in st.session_state:
+    if "current_image" not in st.session_state:
         st.session_state.current_image = None
-    
+
     # Function to convert image to base64
     def image_to_base64(image: Image.Image) -> str:
         buffered = BytesIO()
@@ -128,7 +137,9 @@ if authentication_status:
         return f"data:image/png;base64,{img_str}"
 
     # Function to process messages and ensure token limit, ignoring image messages
-    def process_messages(messages: List[Dict[str, str]], model: str) -> List[Dict[str, str]]:
+    def process_messages(
+        messages: List[Dict[str, str]], model: str
+    ) -> List[Dict[str, str]]:
         encoding = tiktoken.encoding_for_model(model)
         total_tokens = 0
 
@@ -141,20 +152,34 @@ if authentication_status:
                     continue
 
             # Only process text content for token count
-            content_to_encode = message["content"] if isinstance(
-                message["content"], str) else str(message["content"])
+            content_to_encode = (
+                message["content"]
+                if isinstance(message["content"], str)
+                else str(message["content"])
+            )
             encoded_length = len(encoding.encode(content_to_encode))
             total_tokens += encoded_length
 
         # Remove oldest non-system messages if token count exceeds the limit
         token_limit = 8000 if model == "gpt-4" else 4000
         while total_tokens > token_limit:
-            index_to_remove = next((i for i, msg in enumerate(
-                messages) if msg["role"] != "system" and not isinstance(msg["content"], list)), None)
+            index_to_remove = next(
+                (
+                    i
+                    for i, msg in enumerate(messages)
+                    if msg["role"] != "system" and not isinstance(msg["content"], list)
+                ),
+                None,
+            )
             if index_to_remove is not None:
                 removed_content = messages.pop(index_to_remove)["content"]
-                total_tokens -= len(encoding.encode(removed_content if isinstance(
-                    removed_content, str) else str(removed_content)))
+                total_tokens -= len(
+                    encoding.encode(
+                        removed_content
+                        if isinstance(removed_content, str)
+                        else str(removed_content)
+                    )
+                )
             else:
                 break
 
@@ -172,7 +197,7 @@ if authentication_status:
                         "type": "image_url",
                         "image_url": {"url": img_base64},
                     },
-                ]
+                ],
             }
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[uploaded_file.name] = image_message
@@ -184,13 +209,20 @@ if authentication_status:
     if st.session_state.uploaded_images != {}:
         with st.spinner("Uploading images..."):
             with st.sidebar:
-                for image_name, image_message in st.session_state.uploaded_images.items():
+                for (
+                    image_name,
+                    image_message,
+                ) in st.session_state.uploaded_images.items():
                     st.image(image_message["content"][0]["image_url"]["url"])
-    if st.session_state.current_image and st.session_state.current_image != st.session_state.buffer_image:
+    if (
+        st.session_state.current_image
+        and st.session_state.current_image != st.session_state.buffer_image
+    ):
         try:
             # Since paste_result.image_data is already a PIL image, use it directly
             img = st.session_state.current_image
-            img_base64 = image_to_base64(img)  # Convert to base64 string for display
+            # Convert to base64 string for display
+            img_base64 = image_to_base64(img)
             image_message = {
                 "role": "user",
                 "content": [
@@ -198,18 +230,21 @@ if authentication_status:
                         "type": "image_url",
                         "image_url": {"url": img_base64},
                     },
-                ]
+                ],
             }
-            
+
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[img_base64[:100]] = image_message
-            
+
         except Exception as e:
             st.error(f"Error processing image: {str(e)}")
 
     # Display chat messages
     for message in st.session_state.messages:
-        if not isinstance(message["content"], list) and message["content"] == "Here is an image.":
+        if (
+            not isinstance(message["content"], list)
+            and message["content"] == "Here is an image."
+        ):
             continue
         with st.chat_message(message["role"]):
             if isinstance(message["content"], list):
@@ -229,80 +264,139 @@ if authentication_status:
                 st.session_state.messages.append(image_message)
                 st.image(image_message["content"][0]["image_url"]["url"], width=200)
             if prompt == True:
-                st.session_state.messages.append({"role": "user", "content": "Here is an image."})
+                st.session_state.messages.append(
+                    {"role": "user", "content": "Here is an image."}
+                )
             else:
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 st.markdown(prompt)
 
-        if st.session_state.buffer_image != st.session_state.current_image:
-            st.session_state.buffer_image = st.session_state.current_image
-            st.session_state.current_image = None
-            st.session_state.uploaded_images = {}  # Clear uploaded images as well
-
         # Process messages for token limits before sending to the model
         st.session_state.messages = process_messages(
-            st.session_state.messages, st.session_state["openai_model"])
+            st.session_state.messages, st.session_state["openai_model"]
+        )
 
         with st.chat_message("assistant"):
             try:
                 # Create a placeholder to dynamically update the spinner text
                 spinner_placeholder = st.empty()
-                spinner_placeholder.text("Starting response generation...")  # Initial spinner text
+                # Initial spinner text
+                spinner_placeholder.text("Starting response generation...")
                 # Use documents if the checkbox is checked
                 if use_documents:
-                    spinner_placeholder.text("Attempting to generate response from documents...")
-                    res = generateFromEmbeddings(prompt, st.session_state["openai_model"], st.session_state.lang_chat_messages)
+                    spinner_placeholder.text(
+                        "Attempting to generate response from documents..."
+                    )
+                    if st.session_state.uploaded_images != {}:
+                        spinner_placeholder.text("Reading images for documents...")
+                        base_prompt = [
+                            {
+                                "role": "user",
+                                "content": "Verbose the things on the image do not analyze",
+                            },
+                        ]
+                        base_prompt.extend(
+                            [
+                                {"role": msg["role"], "content": msg["content"]}
+                                for msg in st.session_state.messages
+                                if isinstance(msg["content"], list)
+                            ]
+                        )
+                        res = client.chat.completions.create(
+                            model=st.session_state["openai_model"],
+                            messages=base_prompt,
+                        )
+                        content = res.choices[0].message.content
+                        st.session_state.lang_chat_messages.extend(
+                            [
+                                HumanMessage(
+                                    content="Here is an image provide accurate and indepth exaplination about the image, if there is a text written read it in full."
+                                ),
+                                content,
+                            ]
+                        )
+                    spinner_placeholder.text("Generating from documents...")
+                    res = generateFromEmbeddings(
+                        prompt,
+                        st.session_state["openai_model"],
+                        st.session_state.lang_chat_messages,
+                    )
 
                     # If no response from documents, fallback to normal generation
                     if not res:
-                        spinner_placeholder.text("No response from documents. Switching to normal generation.")
+                        spinner_placeholder.text(
+                            "No response from documents. Switching to normal generation."
+                        )
                         stream = client.chat.completions.create(
                             model=st.session_state["openai_model"],
-                            messages=[{"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages],
+                            messages=[
+                                {"role": msg["role"], "content": msg["content"]}
+                                for msg in st.session_state.messages
+                            ],
                             stream=True,
                         )
                         response = st.write_stream(stream)
-                        
+
                     else:
                         spinner_placeholder.text("Response generated from documents.")
                         response, documents = res
                         st.write(response)
                         st.write(documents)  # Display documents if applicable
                 elif use_google:
-                    spinner_placeholder.text("Generating response using Google Search...")
+                    spinner_placeholder.text(
+                        "Generating response using Google Search..."
+                    )
                     agent = getGoogleAgent(model=st.session_state["openai_model"])
                     chat_history = []
                     messages = st.session_state.messages
-                    for i in range(0, len(messages) - 1, 2):  # Loop in steps of 2 to pair (quest, resp)
-                        if not isinstance(messages[i]['content'], list):
-                            user_message = messages[i]['content']
-                            assistant_response = messages[i + 1]['content']
-                            chat_history.append(f"User: {user_message}\nAssistant: {assistant_response}")
-                    
+                    # Loop in steps of 2 to pair (quest, resp)
+                    for i in range(0, len(messages) - 1, 2):
+                        if not isinstance(messages[i]["content"], list):
+                            user_message = messages[i]["content"]
+                            assistant_response = messages[i + 1]["content"]
+                            chat_history.append(
+                                f"User: {user_message}\nAssistant: {assistant_response}"
+                            )
+
                     # Join the tuples into a single string
                     formatted_chat_history = "\n".join(chat_history)
 
-                    response = agent.invoke({
-                        "input": prompt, 
-                        "chat_history": formatted_chat_history
-                    })['output']
+                    response = agent.invoke(
+                        {"input": prompt, "chat_history": formatted_chat_history}
+                    )["output"]
                     spinner_placeholder.text("Response generated using Google Search.")
                     st.write(response)
                 else:
-                    spinner_placeholder.text("Generating response using normal method...")
-                    print(st.session_state.messages)    
+                    spinner_placeholder.text(
+                        "Generating response using normal method..."
+                    )
+                    print(st.session_state.messages)
                     stream = client.chat.completions.create(
                         model=st.session_state["openai_model"],
-                        messages=[{"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages],
+                        messages=[
+                            {"role": msg["role"], "content": msg["content"]}
+                            for msg in st.session_state.messages
+                        ],
                         stream=True,
                     )
                     response = st.write_stream(stream)
                 # Append the assistant response to the message list
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                st.session_state.lang_chat_messages.extend([HumanMessage(content=prompt), response])
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response}
+                )
+                st.session_state.lang_chat_messages.extend(
+                    [HumanMessage(content=prompt), response]
+                )
 
                 # Clear the placeholder after generating the response
                 spinner_placeholder.empty()
                 paste_result.image_data = None
+
+                if st.session_state.buffer_image != st.session_state.current_image:
+                    st.session_state.buffer_image = st.session_state.current_image
+                    st.session_state.current_image = None
+                    st.session_state.uploaded_images = (
+                        {}
+                    )  # Clear uploaded images as well
             except Exception as e:
                 st.error(f"Error: {str(e)}")
