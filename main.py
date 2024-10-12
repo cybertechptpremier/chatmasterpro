@@ -428,7 +428,7 @@ if authentication_status:
                         messages = [
                             {
                                 "role": "assistant",
-                                "content": "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions. Carefully read the passage to understand its claims, then guide users to the most sound conclusion. Identify question types—whether they aim to weaken, strengthen, infer, or identify assumptions. Analyze each answer choice by comparing it to the passage, evaluating its effect on the argument, Eliminate them first as you see fit, look back on the passage for sanity checks of your statments. Finally, explain the reasoning clearly to support users in understanding the process and reaching defensible conclusions. Only answer this question, be precise, and use the passage as context.",
+                                "content": "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions. Carefully read the passage to understand its claims, then guide users to the most sound conclusion. Identify question types—whether they aim to weaken, strengthen, infer, or identify assumptions. Analyze each answer choice by comparing it to the passage, evaluating its effect on the argument, Eliminate them first as you see fit, look back on the passage for sanity checks of your statments. Finally, explain the reasoning clearly to support users in understanding the process and reaching defensible conclusions. Only answer this question, be precise, and use the passage as context. DO NOT START GENERATING NEW QUESTIONS",
                             },
                         ]
                         messages.extend(
@@ -441,9 +441,9 @@ if authentication_status:
                         response = client.chat.completions.create(
                             model=st.session_state["openai_model"],
                             messages=messages,
-                            stream=True,
                         )
-                        response = st.write_stream(response)
+                        response = response.choices[0].message.content
+                        st.write(response)
 
                     else:
                         spinner_placeholder.text(
