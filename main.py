@@ -12,13 +12,14 @@ from streamlit_paste_button import paste_image_button
 from langchain_core.messages import HumanMessage
 import pickle
 from pathlib import Path
-
+import logging
 import streamlit_authenticator as stauth
 import sys
 
 __import__('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
@@ -291,66 +292,6 @@ if authentication_status:
                 spinner_placeholder = st.empty()
                 # Initial spinner text
                 spinner_placeholder.text("Starting response generation...")
-                # Use documents if the checkbox is checked
-                # if use_documents:
-                # spinner_placeholder.text(
-                #     "Attempting to generate response from documents..."
-                # )
-                # if st.session_state.uploaded_images != {}:
-                #     spinner_placeholder.text("Reading images for documents...")
-                #     base_prompt = [
-                #         {
-                #             "role": "user",
-                #             "content": "Verbose the things on the image do not analyze",
-                #         },
-                #     ]
-                #     base_prompt.extend(
-                #         [
-                #             {"role": msg["role"], "content": msg["content"]}
-                #             for msg in st.session_state.messages
-                #             if isinstance(msg["content"], list)
-                #         ]
-                #     )
-                #     res = client.chat.completions.create(
-                #         model=st.session_state["openai_model"],
-                #         messages=base_prompt,
-                #     )
-                #     content = res.choices[0].message.content
-                #     st.session_state.lang_chat_messages.extend(
-                #         [
-                #             HumanMessage(
-                #                 content="Here is an image provide accurate and indepth exaplination about the image, if there is a text written read it in full."
-                #             ),
-                #             content,
-                #         ]
-                #     )
-                #     spinner_placeholder.text("Generating from documents...")
-                #     res = generateFromEmbeddings(
-                #         prompt,
-                #         st.session_state["openai_model"],
-                #         st.session_state.lang_chat_messages,
-                #     )
-
-                #     # If no response from documents, fallback to normal generation
-                #     if not res:
-                #         spinner_placeholder.text(
-                #             "No response from documents. Switching to normal generation."
-                #         )
-                #         stream = client.chat.completions.create(
-                #             model=st.session_state["openai_model"],
-                #             messages=[
-                #                 {"role": msg["role"], "content": msg["content"]}
-                #                 for msg in st.session_state.messages
-                #             ],
-                #             stream=True,
-                #         )
-                #         response = st.write_stream(stream)
-
-                #     else:
-                #         spinner_placeholder.text("Response generated from documents.")
-                #         response, documents = res
-                #         st.write(response)
-                #         st.write(documents)  # Display documents if applicable
                 if use_google:
                     spinner_placeholder.text(
                         "Generating response using Google Search..."
@@ -380,6 +321,7 @@ if authentication_status:
                         st.session_state["openai_model"]
                         == "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj"
                     ):
+                        logging.info("ENTERED INTO FINE TUNED")
                         if len(st.session_state.uploaded_images) != 0:
                             spinner_placeholder.text("Uploading Images...")
                             base_prompt = [
@@ -425,10 +367,11 @@ if authentication_status:
                                 ]
                             )
                         spinner_placeholder.text("Generating using fine tuned model...")
+                        PROMPT =  "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions. Carefully read the passage to understand its claims, then guide users to the most sound conclusion. Identify question types—whether they aim to weaken, strengthen, infer, or identify assumptions. Analyze each answer choice by comparing it to the passage, evaluating its effect on the argument, Eliminate them first as you see fit, look back on the passage for sanity checks of your statments. Finally, explain the reasoning clearly to support users in understanding the process and reaching defensible conclusions. Only answer this question, be precise, and use the passage as context. NEVER START GENERATING NEW QUESTION."
                         messages = [
                             {
                                 "role": "assistant",
-                                "content": "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions. Carefully read the passage to understand its claims, then guide users to the most sound conclusion. Identify question types—whether they aim to weaken, strengthen, infer, or identify assumptions. Analyze each answer choice by comparing it to the passage, evaluating its effect on the argument, Eliminate them first as you see fit, look back on the passage for sanity checks of your statments. Finally, explain the reasoning clearly to support users in understanding the process and reaching defensible conclusions. Only answer this question, be precise, and use the passage as context. DO NOT START GENERATING NEW QUESTIONS",
+                                "content":PROMPT,
                             },
                         ]
                         messages.extend(
@@ -438,11 +381,14 @@ if authentication_status:
                                 if not isinstance(msg["content"], list)
                             ]
                         )
+
+                        logging.info(messages)
                         response = client.chat.completions.create(
                             model=st.session_state["openai_model"],
                             messages=messages,
                         )
                         response = response.choices[0].message.content
+                        logging.info(response)
                         st.write(response)
 
                     else:
