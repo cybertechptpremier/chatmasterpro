@@ -157,7 +157,6 @@ def handleNormal(client,prompt, spinner_placeholder):
         [
             {"role": msg["role"], "content": msg["content"]}
             for msg in st.session_state.messages
-            if not isinstance(msg["content"], list)
         ]
     )
     stream = client.chat.completions.create(
