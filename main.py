@@ -274,8 +274,8 @@ if authentication_status:
                     {"role": "user", "content": "Here is an image."}
                 )
             else:
-                st.session_state.messages.append({"role": "user", "content": prompt})
                 st.markdown(prompt)
+                
 
         # Process messages for token limits before sending to the model
         if (
@@ -327,7 +327,7 @@ if authentication_status:
                             base_prompt = [
                                 {
                                     "role": "system",
-                                    "content": "You are an Image Reader. I will provide you with images containing text. Your task is to read the text in the images and return the exact texts, formatted as it appears, combine them in one response if there are multiple. without any modifications or interpretations.",
+                                    "content": "You are an Image Reader. I will provide you with images containing text. Your task is to read the text in the images and return the exact texts, formatted as it appears, combine them in one response intelligently if there are multiple. without any modifications or interpretations.",
                                 },
                             ]
                             image_count = 0
@@ -374,6 +374,7 @@ if authentication_status:
                                 "content":PROMPT,
                             },
                         ]
+                        st.session_state.messages.append({"role": "user", "content": prompt})
                         messages.extend(
                             [
                                 {"role": msg["role"], "content": msg["content"]}
@@ -381,6 +382,7 @@ if authentication_status:
                                 if not isinstance(msg["content"], list)
                             ]
                         )
+                        
 
                         logging.info(messages)
                         response = client.chat.completions.create(
