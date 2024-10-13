@@ -159,14 +159,14 @@ def handleNormal(client,prompt, spinner_placeholder):
             for msg in st.session_state.messages
         ]
     )
-    stream = client.chat.completions.create(
+    response = client.chat.completions.create(
         model=st.session_state["openai_model"],
         messages=messages,
-        stream=True,
     )
-    response = st.write_stream(stream)
+    response = response.choices[0].message.content
+    logging.info(response)
+    st.write(response)
     return response
-
 
 if authentication_status:
     st.info(f"Welcome *{name}*")
