@@ -185,7 +185,12 @@ if authentication_status:
     # Sidebar for model selection and clear chat history button
     with st.sidebar:
         st.header("Settings")
-        authenticator.logout("↩", "main")
+        col1, col2 = st.columns(2)
+        with col1:
+            authenticator.logout("↩", "main")
+        with col2:
+            if st.button("Rerun"):
+                st.rerun()
         selected_model = st.selectbox(
             "Choose a Model",
             options=[
