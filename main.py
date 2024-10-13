@@ -194,8 +194,8 @@ if authentication_status:
         selected_model = st.selectbox(
             "Choose a Model",
             options=[
-                "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj",
                 "gpt-4o-mini",
+                "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj",
                 "gpt-4o-2024-08-06",
             ],
             index=0,
