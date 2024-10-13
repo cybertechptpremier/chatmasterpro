@@ -358,8 +358,6 @@ if authentication_status:
 
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[img_base64[:100]] = image_message
-            st.rerun()
-
         except Exception as e:
             st.error(f"Error processing image: {str(e)}")
 
