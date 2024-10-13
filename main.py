@@ -16,8 +16,8 @@ import logging
 import streamlit_authenticator as stauth
 import sys
 
-__import__('pysqlite3')
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__("pysqlite3")
+# sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -44,6 +44,122 @@ if authentication_status == False:
     st.error("Username/password is incorrect")
 if authentication_status is None:
     st.warning("Please enter your username and password")
+
+
+def handleFinetuned(client, prompt, spinner_placeholder):
+    logging.info("ENTERED INTO FINE TUNED")
+    if len(st.session_state.uploaded_images) != 0:
+        spinner_placeholder.text("Uploading Images...")
+        base_prompt = [
+            {
+                "role": "system",
+                "content": "You are an Image Reader. I will provide you with images containing text. Your task is to read the text in the images and return the exact texts, formatted as it appears, combine them in one response intelligently if there are multiple. without any modifications or interpretations.",
+            },
+        ]
+        image_count = 0
+        images_to_remove = []
+        for msg in st.session_state.messages:
+            if isinstance(msg["content"], list):
+                base_prompt.extend(
+                    [
+                        {
+                            "role": msg["role"],
+                            "content": f"Image No. {image_count}",
+                        },
+                        {
+                            "role": msg["role"],
+                            "content": msg["content"],
+                        },
+                    ]
+                )
+                image_count += 1
+                images_to_remove.append(msg)
+        for image in images_to_remove:
+            st.session_state.messages.remove(image)
+        res = client.chat.completions.create(
+            model="gpt-4o-2024-05-13",
+            messages=base_prompt,
+        )
+        content = res.choices[0].message.content
+        st.session_state.messages.extend(
+            [
+                {
+                    "role": "user",
+                    "content": "Here are some images, return the text",
+                },
+                {"role": "assistant", "content": "Text in Image:\n" + content},
+            ]
+        )
+    spinner_placeholder.text("Generating using fine tuned model...")
+    PROMPT = "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions. Carefully read the passage to understand its claims, then guide users to the most sound conclusion. Identify question types—whether they aim to weaken, strengthen, infer, or identify assumptions. Analyze each answer choice by comparing it to the passage, evaluating its effect on the argument, Eliminate them first as you see fit, look back on the passage for sanity checks of your statments. Finally, explain the reasoning clearly to support users in understanding the process and reaching defensible conclusions. Only answer this question, be precise, and use the passage as context. NEVER START GENERATING NEW QUESTION."
+    messages = [
+        {
+            "role": "assistant",
+            "content": PROMPT,
+        },
+    ]
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    messages.extend(
+        [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in st.session_state.messages
+            if not isinstance(msg["content"], list)
+        ]
+    )
+
+    logging.info(messages)
+    response = client.chat.completions.create(
+        model=st.session_state["openai_model"],
+        messages=messages,
+    )
+    response = response.choices[0].message.content
+    logging.info(response)
+    st.write(response)
+    return response
+
+
+def handleGoogle(prompt, spinner_placeholder):
+    spinner_placeholder.text(
+                        "Generating response using Google Search..."
+                    )
+    agent = getGoogleAgent(model=st.session_state["openai_model"])
+    chat_history = []
+    messages = st.session_state.messages
+                    # Loop in steps of 2 to pair (quest, resp)
+    for i in range(0, len(messages) - 1, 2):
+        if not isinstance(messages[i]["content"], list):
+            user_message = messages[i]["content"]
+            assistant_response = messages[i + 1]["content"]
+            chat_history.append(
+                                f"User: {user_message}\nAssistant: {assistant_response}"
+                            )
+
+                    # Join the tuples into a single string
+    formatted_chat_history = "\n".join(chat_history)
+
+    response = agent.invoke(
+                        {"input": prompt, "chat_history": formatted_chat_history}
+                    )["output"]
+    spinner_placeholder.text("Response generated using Google Search.")
+    st.write(response)
+    return response
+
+def handleNormal(client, spinner_placeholder):
+    spinner_placeholder.text(
+                            "Generating response using normal method..."
+                        )
+    print(st.session_state.messages)
+    stream = client.chat.completions.create(
+                            model=st.session_state["openai_model"],
+                            messages=[
+                                {"role": msg["role"], "content": msg["content"]}
+                                for msg in st.session_state.messages
+                            ],
+                            stream=True,
+                        )
+    response = st.write_stream(stream)
+    return response
+
 if authentication_status:
     st.info(f"Welcome *{name}*")
     # App branding and title
@@ -84,7 +200,6 @@ if authentication_status:
         # Button to clear chat history
         if st.button("Clear Chat History"):
             st.session_state.messages = []
-            st.session_state.lang_chat_messages = []
             st.session_state.uploaded_images = {}  # Clear uploaded images as well
             st.success("Chat history cleared!")
 
@@ -126,8 +241,6 @@ if authentication_status:
 
     if "uploaded_images" not in st.session_state:
         st.session_state.uploaded_images = {}
-    if "lang_chat_messages" not in st.session_state:
-        st.session_state.lang_chat_messages = []
     if "buffer_image" not in st.session_state:
         st.session_state.buffer_image = None
 
@@ -246,9 +359,9 @@ if authentication_status:
 
     # Display chat messages
     for message in st.session_state.messages:
-        if (
-            not isinstance(message["content"], list)
-            and (message["content"] == "Here are some images, return the text" or message["content"].startswith("Text in Image:"))
+        if not isinstance(message["content"], list) and (
+            message["content"] == "Here are some images, return the text"
+            or message["content"].startswith("Text in Image:")
         ):
             continue
         with st.chat_message(message["role"]):
@@ -275,7 +388,6 @@ if authentication_status:
                 )
             else:
                 st.markdown(prompt)
-                
 
         # Process messages for token limits before sending to the model
         if (
@@ -293,126 +405,15 @@ if authentication_status:
                 # Initial spinner text
                 spinner_placeholder.text("Starting response generation...")
                 if use_google:
-                    spinner_placeholder.text(
-                        "Generating response using Google Search..."
-                    )
-                    agent = getGoogleAgent(model=st.session_state["openai_model"])
-                    chat_history = []
-                    messages = st.session_state.messages
-                    # Loop in steps of 2 to pair (quest, resp)
-                    for i in range(0, len(messages) - 1, 2):
-                        if not isinstance(messages[i]["content"], list):
-                            user_message = messages[i]["content"]
-                            assistant_response = messages[i + 1]["content"]
-                            chat_history.append(
-                                f"User: {user_message}\nAssistant: {assistant_response}"
-                            )
-
-                    # Join the tuples into a single string
-                    formatted_chat_history = "\n".join(chat_history)
-
-                    response = agent.invoke(
-                        {"input": prompt, "chat_history": formatted_chat_history}
-                    )["output"]
-                    spinner_placeholder.text("Response generated using Google Search.")
-                    st.write(response)
+                    response = handleGoogle(prompt, spinner_placeholder)
                 else:
-                    if (
-                        st.session_state["openai_model"]
-                        == "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj"
-                    ):
-                        logging.info("ENTERED INTO FINE TUNED")
-                        if len(st.session_state.uploaded_images) != 0:
-                            spinner_placeholder.text("Uploading Images...")
-                            base_prompt = [
-                                {
-                                    "role": "system",
-                                    "content": "You are an Image Reader. I will provide you with images containing text. Your task is to read the text in the images and return the exact texts, formatted as it appears, combine them in one response intelligently if there are multiple. without any modifications or interpretations.",
-                                },
-                            ]
-                            image_count = 0
-                            images_to_remove = []
-                            for msg in st.session_state.messages:
-
-                                if isinstance(msg["content"], list):
-
-                                    base_prompt.extend(
-                                        [
-                                            {
-                                                "role": msg["role"],
-                                                "content": f"Image No. {image_count}",
-                                            },
-                                            {
-                                                "role": msg["role"],
-                                                "content": msg["content"],
-                                            },
-                                        ]
-                                    )
-                                    image_count += 1
-                                    images_to_remove.append(msg)
-                            for image in images_to_remove:
-                                st.session_state.messages.remove(image)
-                            res = client.chat.completions.create(
-                                model="gpt-4o-2024-05-13",
-                                messages=base_prompt,
-                            )
-                            content = res.choices[0].message.content
-                            st.session_state.messages.extend(
-                                [
-                                    {
-                                        "role": "user",
-                                        "content": "Here are some images, return the text",
-                                    },
-                                    {"role": "assistant", "content": "Text in Image:\n" + content},
-                                ]
-                            )
-                        spinner_placeholder.text("Generating using fine tuned model...")
-                        PROMPT =  "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions. Carefully read the passage to understand its claims, then guide users to the most sound conclusion. Identify question types—whether they aim to weaken, strengthen, infer, or identify assumptions. Analyze each answer choice by comparing it to the passage, evaluating its effect on the argument, Eliminate them first as you see fit, look back on the passage for sanity checks of your statments. Finally, explain the reasoning clearly to support users in understanding the process and reaching defensible conclusions. Only answer this question, be precise, and use the passage as context. NEVER START GENERATING NEW QUESTION."
-                        messages = [
-                            {
-                                "role": "assistant",
-                                "content":PROMPT,
-                            },
-                        ]
-                        st.session_state.messages.append({"role": "user", "content": prompt})
-                        messages.extend(
-                            [
-                                {"role": msg["role"], "content": msg["content"]}
-                                for msg in st.session_state.messages
-                                if not isinstance(msg["content"], list)
-                            ]
-                        )
-                        
-
-                        logging.info(messages)
-                        response = client.chat.completions.create(
-                            model=st.session_state["openai_model"],
-                            messages=messages,
-                        )
-                        response = response.choices[0].message.content
-                        logging.info(response)
-                        st.write(response)
-
+                    if (st.session_state["openai_model"] == "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj"):
+                        response = handleFinetuned(client, prompt, spinner_placeholder)
                     else:
-                        spinner_placeholder.text(
-                            "Generating response using normal method..."
-                        )
-                        print(st.session_state.messages)
-                        stream = client.chat.completions.create(
-                            model=st.session_state["openai_model"],
-                            messages=[
-                                {"role": msg["role"], "content": msg["content"]}
-                                for msg in st.session_state.messages
-                            ],
-                            stream=True,
-                        )
-                        response = st.write_stream(stream)
+                        response = handleNormal(client, spinner_placeholder)
                 # Append the assistant response to the message list
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response}
-                )
-                st.session_state.lang_chat_messages.extend(
-                    [HumanMessage(content=prompt), response]
                 )
 
                 # Clear the placeholder after generating the response
