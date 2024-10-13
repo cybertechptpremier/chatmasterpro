@@ -119,46 +119,55 @@ def handleFinetuned(client, prompt, spinner_placeholder):
 
 
 def handleGoogle(prompt, spinner_placeholder):
-    spinner_placeholder.text(
-                        "Generating response using Google Search..."
-                    )
+    spinner_placeholder.text("Generating response using Google Search...")
     agent = getGoogleAgent(model=st.session_state["openai_model"])
     chat_history = []
     messages = st.session_state.messages
-                    # Loop in steps of 2 to pair (quest, resp)
+    # Loop in steps of 2 to pair (quest, resp)
     for i in range(0, len(messages) - 1, 2):
         if not isinstance(messages[i]["content"], list):
             user_message = messages[i]["content"]
             assistant_response = messages[i + 1]["content"]
             chat_history.append(
-                                f"User: {user_message}\nAssistant: {assistant_response}"
-                            )
+                f"User: {user_message}\nAssistant: {assistant_response}"
+            )
 
-                    # Join the tuples into a single string
+            # Join the tuples into a single string
     formatted_chat_history = "\n".join(chat_history)
 
-    response = agent.invoke(
-                        {"input": prompt, "chat_history": formatted_chat_history}
-                    )["output"]
+    response = agent.invoke({"input": prompt, "chat_history": formatted_chat_history})[
+        "output"
+    ]
     spinner_placeholder.text("Response generated using Google Search.")
     st.write(response)
     return response
 
-def handleNormal(client, spinner_placeholder):
-    spinner_placeholder.text(
-                            "Generating response using normal method..."
-                        )
-    print(st.session_state.messages)
+
+def handleNormal(client,prompt, spinner_placeholder):
+    spinner_placeholder.text("Generating response using normal method...")
+    PROMPT = "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions. Carefully read the passage to understand its claims, then guide users to the most sound conclusion. Identify question types—whether they aim to weaken, strengthen, infer, or identify assumptions. Analyze each answer choice by comparing it to the passage, evaluating its effect on the argument, Eliminate them first as you see fit, look back on the passage for sanity checks of your statments. Finally, explain the reasoning clearly to support users in understanding the process and reaching defensible conclusions. Only answer this question, be precise, and use the passage as context."
+    messages = [
+        {
+            "role": "assistant",
+            "content": PROMPT,
+        },
+    ]
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    messages.extend(
+        [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in st.session_state.messages
+            if not isinstance(msg["content"], list)
+        ]
+    )
     stream = client.chat.completions.create(
-                            model=st.session_state["openai_model"],
-                            messages=[
-                                {"role": msg["role"], "content": msg["content"]}
-                                for msg in st.session_state.messages
-                            ],
-                            stream=True,
-                        )
+        model=st.session_state["openai_model"],
+        messages=messages,
+        stream=True,
+    )
     response = st.write_stream(stream)
     return response
+
 
 if authentication_status:
     st.info(f"Welcome *{name}*")
@@ -195,7 +204,7 @@ if authentication_status:
             "Choose a Model",
             options=[
                 "gpt-4o-mini",
-                "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj",
+                # "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj",s
                 "gpt-4o-2024-08-06",
             ],
             index=0,
@@ -411,10 +420,13 @@ if authentication_status:
                 if use_google:
                     response = handleGoogle(prompt, spinner_placeholder)
                 else:
-                    if (st.session_state["openai_model"] == "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj"):
+                    if (
+                        st.session_state["openai_model"]
+                        == "ft:gpt-4o-mini-2024-07-18:primetime-premier:rc-lr:AHCNvENj"
+                    ):
                         response = handleFinetuned(client, prompt, spinner_placeholder)
                     else:
-                        response = handleNormal(client, spinner_placeholder)
+                        response = handleNormal(client, prompt, spinner_placeholder)
                 # Append the assistant response to the message list
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response}
