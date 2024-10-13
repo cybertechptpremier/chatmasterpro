@@ -16,8 +16,8 @@ import logging
 import streamlit_authenticator as stauth
 import sys
 
-# __import__("pysqlite3")
-# sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+__import__("pysqlite3")
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 logging.basicConfig(level=logging.INFO)
 
