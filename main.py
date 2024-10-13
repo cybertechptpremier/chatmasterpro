@@ -330,8 +330,8 @@ if authentication_status:
         st.session_state.current_image = paste_result.image_data
 
     if st.session_state.uploaded_images != {}:
-        with st.spinner("Uploading images..."):
-            with st.sidebar:
+        with st.sidebar:
+            with st.spinner("Uploading images..."):
                 for (
                     image_name,
                     image_message,
@@ -358,6 +358,7 @@ if authentication_status:
 
             # Add image to message list but don't submit yet
             st.session_state.uploaded_images[img_base64[:100]] = image_message
+            st.rerun()
 
         except Exception as e:
             st.error(f"Error processing image: {str(e)}")
