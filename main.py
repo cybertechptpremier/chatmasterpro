@@ -145,7 +145,7 @@ def handleGoogle(prompt, spinner_placeholder):
 
 def handleNormal(client,prompt, spinner_placeholder):
     spinner_placeholder.text("Generating response using normal method...")
-    PROMPT = "As a logical reasoning assistant, your role is to help users analyze passages and answer complex questions about arguments and deductions."
+    PROMPT = "As a logical reasoning assistant, your role is to assist users in analyzing passages, evaluating arguments, and answering complex questions based on given images or text. You will carefully read the image or text, analyze the question in relation to the context, and critically evaluate each answer choice. By methodically assessing the validity and relevance of each option, you will guide the user toward the most accurate conclusion or deduction for the problem at hand."
     messages = [
         {
             "role": "assistant",
