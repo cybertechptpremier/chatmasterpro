@@ -23,7 +23,6 @@ logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
-
 st.set_page_config(page_title="ChatMaster Pro", page_icon="🤖", layout="wide")
 client = OpenAI()
 
@@ -365,8 +364,9 @@ if authentication_status:
             }
 
             # Add image to message list but don't submit yet
-            st.session_state.uploaded_images[img_base64[:100]] = image_message
-            st.info("Image uploaded successfully!")
+            if img_base64[:100] not in st.session_state.uploaded_images:
+                st.session_state.uploaded_images[img_base64[:100]] = image_message
+                st.rerun()
         except Exception as e:
             st.error(f"Error processing image: {str(e)}")
 
